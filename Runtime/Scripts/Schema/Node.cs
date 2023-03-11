@@ -13,6 +13,8 @@
 // limitations under the License.
 //
 
+using Newtonsoft.Json.Linq;
+
 namespace GLTFast.Schema
 {
 
@@ -141,6 +143,8 @@ namespace GLTFast.Schema
         public MeshGpuInstancing EXT_mesh_gpu_instancing;
         /// <inheritdoc cref="LightsPunctual"/>
         public NodeLightsPunctual KHR_lights_punctual;
+
+        public JObject raw;
 
         // Whenever an extension is added, the JsonParser
         // (specifically step four of JsonParser.ParseJson)

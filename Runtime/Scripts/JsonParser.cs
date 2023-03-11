@@ -13,17 +13,29 @@
 // limitations under the License.
 //
 
+using System.Collections.Generic;
+using System.Reflection;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Profiling;
 
 namespace GLTFast
 {
-
     using Schema;
 
     static class JsonParser
     {
+        static JsonSerializerSettings s_DefaultJsonSerializerSettings = new()
+        {
+            Converters = new List<JsonConverter> {
+                new RootExtensionJsonConverter(),
+                new MeshPrimitiveExtensionJsonConverter()
+            },
+            ContractResolver = new DefaultContractResolver(){}
+        };
+        
         internal static Root ParseJson(string json)
         {
             // JsonUtility sometimes creates non-null default instances of objects-type members
@@ -37,9 +49,8 @@ namespace GLTFast
 
             // Step one: main JSON parsing
             Profiler.BeginSample("JSON main");
-            try
-            {
-                root = JsonUtility.FromJson<Root>(json);
+            try {
+                root = JsonConvert.DeserializeObject<Root>(json, s_DefaultJsonSerializerSettings);
             }
             catch (System.ArgumentException)
             {
@@ -61,10 +72,11 @@ namespace GLTFast
                 for (int i = 0; i < root.materials.Length; i++)
                 {
                     var mat = root.materials[i];
+                    mat.extensions ??= new MaterialExtension();
                     // mat.extension is always set (not null), because JsonUtility constructs a default
                     // if any of mat.extension's members is not null, it is because there was
                     // a legit extensions node in JSON => we have to check which ones
-                    if (mat.extensions.KHR_materials_unlit != null)
+                    if (mat.extensions?.KHR_materials_unlit != null)
                     {
                         check = true;
                     }
@@ -80,7 +92,7 @@ namespace GLTFast
                 for (int i = 0; i < root.accessors.Length; i++)
                 {
                     var accessor = root.accessors[i];
-                    if (accessor.sparse.indices == null || accessor.sparse.values == null)
+                    if (accessor.sparse?.indices == null || accessor.sparse?.values == null)
                     {
                         // If indices and values members are null, `sparse` is likely
                         // an auto-instance by the JsonUtility and not present in JSON.
@@ -121,7 +133,7 @@ namespace GLTFast
             if (check)
             {
                 Profiler.BeginSample("JSON secondary");
-                var fakeRoot = JsonUtility.FromJson<FakeSchema.Root>(json);
+                var fakeRoot = JsonConvert.DeserializeObject<FakeSchema.Root>(json);
 
                 if (root.materials != null)
                 {

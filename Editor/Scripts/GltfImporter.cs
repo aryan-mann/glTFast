@@ -96,37 +96,18 @@ namespace GLTFast.Editor
             var downloadProvider = new EditorDownloadProvider();
             var logger = new CollectingLogger();
 
-            m_Gltf = new GltfImport(
-                downloadProvider,
-                new UninterruptedDeferAgent(),
-                null,
-                logger
-                );
+            m_Gltf = new GltfImport(downloadProvider, new UninterruptedDeferAgent(), null, logger);
 
             var gltfIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Packages/com.atteneder.gltfast/Editor/UI/gltf-icon-bug.png");
-
-            if (editorImportSettings == null)
+            editorImportSettings ??= new EditorImportSettings();
+            importSettings ??= new ImportSettings
             {
-                // Design-time import specific settings
-                editorImportSettings = new EditorImportSettings();
-            }
-
-            if (importSettings == null)
-            {
-                // Design-time import specific changes to default settings
-                importSettings = new ImportSettings
-                {
-                    // Avoid naming conflicts by default
-                    NodeNameMethod = NameImportMethod.OriginalUnique,
-                    GenerateMipMaps = true,
-                    AnimationMethod = AnimationMethod.Mecanim,
-                };
-            }
-
-            if (instantiationSettings == null)
-            {
-                instantiationSettings = new InstantiationSettings();
-            }
+                // Avoid naming conflicts by default
+                NodeNameMethod = NameImportMethod.OriginalUnique,
+                GenerateMipMaps = true,
+                AnimationMethod = AnimationMethod.Mecanim,
+            };
+            instantiationSettings ??= new InstantiationSettings();
 
             var success = AsyncHelpers.RunSync(() => m_Gltf.Load(ctx.assetPath, importSettings));
 

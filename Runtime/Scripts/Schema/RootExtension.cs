@@ -13,6 +13,10 @@
 // limitations under the License.
 //
 
+using System.Collections.Generic;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 namespace GLTFast.Schema
 {
 
@@ -22,10 +26,32 @@ namespace GLTFast.Schema
     [System.Serializable]
     public class RootExtension
     {
-
         /// <inheritdoc cref="LightsPunctual"/>
         // ReSharper disable once InconsistentNaming
         public LightsPunctual KHR_lights_punctual;
+        
+        // TODO: Loads in all the extensions as a raw representation of the json. Refactor in future.
+        [JsonIgnore]
+        public Dictionary<string, JToken> extensionsJson;
+
+        public RootExtension()
+        {
+            extensionsJson = new Dictionary<string, JToken>(); 
+        }
+        
+        public RootExtension(Dictionary<string, JToken> values)
+        {
+            extensionsJson = values;
+            foreach (var (extensionName, extensionValue) in extensionsJson)
+            {
+                switch (extensionName)
+                {
+                    case nameof(KHR_lights_punctual):
+                        KHR_lights_punctual = extensionValue.Value<LightsPunctual>();
+                        break;
+                }
+            }
+        }
 
         internal void GltfSerialize(JsonWriter writer)
         {

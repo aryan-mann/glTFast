@@ -20,8 +20,7 @@ using UnityEngine;
 
 namespace GLTFast.Schema
 {
-
-    class JsonWriter
+    public sealed class JsonWriter
     {
 
         StreamWriter m_Stream;

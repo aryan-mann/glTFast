@@ -153,8 +153,7 @@ namespace GLTFast.Schema
         /// Specifies if the attribute is a scalar, vector, or matrix,
         /// and the number of elements in the vector or matrix.
         /// </summary>
-        [SerializeField]
-        string type;
+        public string type;
 
         [NonSerialized]
         GltfAccessorAttributeType m_TypeEnum = GltfAccessorAttributeType.Undefined;

@@ -955,7 +955,7 @@ namespace GLTFast
                 return false;
             }
 
-            if (!CheckExtensionSupport(m_GltfRoot))
+            if (!RequiredExtensionsAreSupported(m_GltfRoot))
             {
                 return false;
             }
@@ -1005,7 +1005,7 @@ namespace GLTFast
         /// </summary>
         /// <param name="gltfRoot"></param>
         /// <returns>False if a required extension is not supported. True otherwise.</returns>
-        bool CheckExtensionSupport(Root gltfRoot)
+        bool RequiredExtensionsAreSupported(Root gltfRoot)
         {
             if (gltfRoot.extensionsRequired != null)
             {
@@ -2271,7 +2271,6 @@ namespace GLTFast
 
             void CreateHierarchy(uint nodeIndex, uint? parentIndex)
             {
-
                 Profiler.BeginSample("CreateHierarchy");
                 var node = m_GltfRoot.nodes[nodeIndex];
                 node.GetTransform(out var position, out var rotation, out var scale);
@@ -2281,7 +2280,6 @@ namespace GLTFast
 
             void PopulateHierarchy(uint nodeIndex, uint? parentIndex)
             {
-
                 Profiler.BeginSample("PopulateHierarchy");
                 var node = m_GltfRoot.nodes[nodeIndex];
                 var goName = m_NodeNames == null ? node.name : m_NodeNames[nodeIndex];
@@ -2382,6 +2380,9 @@ namespace GLTFast
                             );
                         }
 
+                        // Handle mesh primitive extensions
+                        
+                        
                         primitiveCount++;
                     }
                 }

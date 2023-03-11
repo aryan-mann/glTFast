@@ -14,6 +14,9 @@
 //
 
 using System;
+using System.Collections.Generic;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace GLTFast.Schema
 {
@@ -307,6 +310,11 @@ namespace GLTFast.Schema
         // ReSharper disable once InconsistentNaming
         public MeshPrimitiveDracoExtension KHR_draco_mesh_compression;
 #endif
+        
+        [JsonIgnore]
+        public Dictionary<string, JToken> extensionsJson;
+        
+        public MeshPrimitiveExtensions() {}
 
         internal void GltfSerialize(JsonWriter writer)
         {
