@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+using GLTFast.Extensions;
 using UnityEngine;
 
 namespace GLTFast
@@ -123,6 +124,8 @@ namespace GLTFast
         /// <param name="index">glTF light index</param>
         /// <returns>De-serialized glTF light</returns>
         Schema.LightPunctual GetSourceLightPunctual(uint index);
+
+        ExtensionCollection GetExtensions();
 
         /// <summary>
         /// Returns an array of inverse bone matrices representing a skin's

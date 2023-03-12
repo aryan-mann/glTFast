@@ -15,6 +15,7 @@
 
 using System.Collections.Generic;
 using System.Reflection;
+using GLTFast.Extensions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using UnityEngine;
@@ -32,8 +33,7 @@ namespace GLTFast
             Converters = new List<JsonConverter> {
                 new RootExtensionJsonConverter(),
                 new MeshPrimitiveExtensionJsonConverter()
-            },
-            ContractResolver = new DefaultContractResolver(){}
+            }
         };
         
         internal static Root ParseJson(string json)

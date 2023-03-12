@@ -14,7 +14,9 @@
 //
 
 using System.Collections.Generic;
+using GLTFast.Schema;
 using UnityEngine;
+using Mesh = UnityEngine.Mesh;
 
 namespace GLTFast
 {
@@ -40,8 +42,8 @@ namespace GLTFast
         /// <inheritdoc />
         public override void BeginScene(
             string name,
-            uint[] rootNodeIndices
-            )
+            uint[] rootNodeIndices,
+            Schema.RootExtension extension = null)
         {
             base.BeginScene(
                 name,
@@ -59,7 +61,8 @@ namespace GLTFast
             uint[] joints = null,
             uint? rootJoint = null,
             float[] morphTargetWeights = null,
-            int primitiveNumeration = 0
+            int primitiveNumeration = 0,
+            MeshPrimitiveExtensions extensions = null
         )
         {
             base.AddPrimitive(

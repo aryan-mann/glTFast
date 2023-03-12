@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
-namespace GLTFast
+namespace GLTFast.Extensions
 {
     public class RootExtensionJsonConverter: JsonConverter<Schema.RootExtension>
     {

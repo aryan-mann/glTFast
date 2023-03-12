@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 using UnityEngine;
 using JsonWriter = Newtonsoft.Json.JsonWriter;
 
-namespace GLTFast
+namespace GLTFast.Extensions
 {
     public class MeshPrimitiveExtensionJsonConverter: JsonConverter<Schema.MeshPrimitiveExtensions>
     {

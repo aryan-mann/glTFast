@@ -33,7 +33,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Threading;
 using System;
-
+using GLTFast.Extensions;
 using GLTFast.Jobs;
 #if MEASURE_TIMINGS
 using GLTFast.Tests;
@@ -219,6 +219,8 @@ namespace GLTFast
         /// </summary>
         string[] m_NodeNames;
 
+        ExtensionCollection m_LoadedExtensions;
+
         Primitive[] m_Primitives;
         int[] m_MeshPrimitiveIndex;
         Matrix4x4[][] m_SkinsInverseBindMatrices;
@@ -260,7 +262,6 @@ namespace GLTFast
             )
         {
             m_DownloadProvider = downloadProvider ?? new DefaultDownloadProvider();
-
             if (deferAgent == null)
             {
                 if (s_DefaultDeferAgent == null
@@ -281,8 +282,8 @@ namespace GLTFast
                 m_DeferAgent = deferAgent;
             }
             m_MaterialGenerator = materialGenerator ?? MaterialGenerator.GetDefaultMaterialGenerator();
-
             m_Logger = logger;
+            m_LoadedExtensions = new ExtensionCollection(this);
         }
 
         /// <summary>
@@ -787,6 +788,12 @@ namespace GLTFast
         }
 
         /// <inheritdoc />
+        public ExtensionCollection GetExtensions()
+        {
+            return m_LoadedExtensions;
+        }
+
+        /// <inheritdoc />
         public Scene GetSourceScene(int index = 0)
         {
             if (m_GltfRoot?.scenes != null && index >= 0 && index < m_GltfRoot.scenes.Length)
@@ -1007,11 +1014,16 @@ namespace GLTFast
         /// <returns>False if a required extension is not supported. True otherwise.</returns>
         bool RequiredExtensionsAreSupported(Root gltfRoot)
         {
+            var supportedExtensions = k_SupportedExtensions;
+            foreach (var extensionHandler in m_LoadedExtensions) {
+                supportedExtensions.Add(extensionHandler.extensionName);
+            }
+            
             if (gltfRoot.extensionsRequired != null)
             {
                 foreach (var ext in gltfRoot.extensionsRequired)
                 {
-                    var supported = k_SupportedExtensions.Contains(ext);
+                    var supported = supportedExtensions.Contains(ext);
                     if (!supported)
                     {
 #if !DRACO_UNITY
@@ -1035,11 +1047,12 @@ namespace GLTFast
                     }
                 }
             }
+            
             if (gltfRoot.extensionsUsed != null)
             {
                 foreach (var ext in gltfRoot.extensionsUsed)
                 {
-                    var supported = k_SupportedExtensions.Contains(ext);
+                    var supported = supportedExtensions.Contains(ext);
                     if (!supported)
                     {
 #if !DRACO_UNITY
@@ -2254,7 +2267,6 @@ namespace GLTFast
 
         async Task InstantiateSceneInternal(Root gltf, IInstantiator instantiator, int sceneId)
         {
-
             async Task IterateNodes(uint nodeIndex, uint? parentIndex, Action<uint, uint?> callback)
             {
                 var node = m_GltfRoot.nodes[nodeIndex];
@@ -2324,6 +2336,9 @@ namespace GLTFast
                                 ? $"{meshName ?? k_PrimitiveName}_{primitiveCount}"
                                 : meshName ?? k_PrimitiveName;
 
+                        // Idk if this is the right way to do it
+                        var meshPrimitiveExtensions = m_GltfRoot.meshes[node.mesh].primitives[primitiveCount].extensions;
+                        
                         if (meshInstancing == null)
                         {
                             instantiator.AddPrimitive(
@@ -2334,7 +2349,8 @@ namespace GLTFast
                                 joints,
                                 rootJoint,
                                 gltf.meshes[node.mesh].weights,
-                                primitiveCount
+                                primitiveCount,
+                                meshPrimitiveExtensions
                             );
                         }
                         else
@@ -2376,13 +2392,11 @@ namespace GLTFast
                                 positions,
                                 rotations,
                                 scales,
-                                primitiveCount
+                                primitiveCount,
+                                meshPrimitiveExtensions
                             );
                         }
 
-                        // Handle mesh primitive extensions
-                        
-                        
                         primitiveCount++;
                     }
                 }
@@ -2411,7 +2425,7 @@ namespace GLTFast
 
             var scene = m_GltfRoot.scenes[sceneId];
 
-            instantiator.BeginScene(scene.name, scene.nodes);
+            instantiator.BeginScene(scene.name, scene.nodes, m_GltfRoot.extensions);
 #if UNITY_ANIMATION
             instantiator.AddAnimation(m_AnimationClips);
 #endif

@@ -13,8 +13,10 @@
 // limitations under the License.
 //
 
+using GLTFast.Schema;
 using Unity.Collections;
 using UnityEngine;
+using Mesh = UnityEngine.Mesh;
 
 namespace GLTFast
 {
@@ -37,7 +39,8 @@ namespace GLTFast
         /// <param name="rootNodeIndices">Indices of root level nodes in scene</param>
         void BeginScene(
             string name
-            , uint[] rootNodeIndices
+            , uint[] rootNodeIndices,
+            Schema.RootExtension extension = null
         );
 
 #if UNITY_ANIMATION
@@ -94,7 +97,8 @@ namespace GLTFast
             uint[] joints = null,
             uint? rootJoint = null,
             float[] morphTargetWeights = null,
-            int primitiveNumeration = 0
+            int primitiveNumeration = 0,
+            MeshPrimitiveExtensions extensions = null
         );
 
         /// <summary>
@@ -120,7 +124,8 @@ namespace GLTFast
             NativeArray<Vector3>? positions,
             NativeArray<Quaternion>? rotations,
             NativeArray<Vector3>? scales,
-            int primitiveNumeration = 0
+            int primitiveNumeration = 0,
+            MeshPrimitiveExtensions extensions = null
         );
 
         /// <summary>

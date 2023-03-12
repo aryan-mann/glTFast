@@ -15,6 +15,7 @@
 
 using System;
 using System.Collections.Generic;
+using GLTFast.Extensions;
 using GLTFast.Schema;
 using Unity.Collections;
 using UnityEngine;
@@ -29,9 +30,7 @@ using Mesh = UnityEngine.Mesh;
 
 namespace GLTFast
 {
-
     using Logging;
-
     /// <summary>
     /// Generates a GameObject hierarchy from a glTF scene
     /// </summary>
@@ -102,11 +101,10 @@ namespace GLTFast
         /// <inheritdoc />
         public virtual void BeginScene(
             string name,
-            uint[] rootNodeIndices
-            )
-        {
+            uint[] rootNodeIndices,
+            Schema.RootExtension extensions = null
+        ) {
             Profiler.BeginSample("BeginScene");
-
             m_Nodes = new Dictionary<uint, GameObject>();
             SceneInstance = new GameObjectSceneInstance();
 
@@ -123,6 +121,30 @@ namespace GLTFast
                 sceneGameObject.layer = m_Settings.Layer;
             }
             SceneTransform = sceneGameObject.transform;
+
+            if (extensions != null)
+            {
+                foreach (var extensionHandler in m_Gltf.GetExtensions())
+                {
+                    if (extensionHandler is IRootExtensionHandler reh)
+                    {
+                        if (!extensions.extensionsJson.ContainsKey(extensionHandler.extensionName))
+                            continue;
+
+                        var extensionToken = extensions.extensionsJson[extensionHandler.extensionName];
+                        var extensionValue = extensionToken.ToObject(reh.rootSchemaType);
+
+                        if (extensionValue == null)
+                        {
+                            Debug.LogWarning($"Unable to deserialize {extensionToken} to {reh.rootSchemaType.FullName}");
+                            continue;
+                        }
+                        
+                        reh.HandleRoot(extensionValue, sceneGameObject);
+                    }
+                }
+            }
+            
             Profiler.EndSample();
         }
 
@@ -227,7 +249,8 @@ namespace GLTFast
             uint[] joints = null,
             uint? rootJoint = null,
             float[] morphTargetWeights = null,
-            int primitiveNumeration = 0
+            int primitiveNumeration = 0,
+            MeshPrimitiveExtensions extensions = null
         )
         {
             if ((m_Settings.Mask & ComponentType.Mesh) == 0)
@@ -296,6 +319,29 @@ namespace GLTFast
             }
 
             renderer.sharedMaterials = materials;
+
+            if (extensions != null)
+            {
+                foreach (var extensionHandler in m_Gltf.GetExtensions())
+                {
+                    if (extensionHandler is IMeshPrimitiveExtensionHandler mpeh)
+                    {
+                        if (!extensions.extensionsJson.ContainsKey(extensionHandler.extensionName))
+                            continue;
+
+                        var extensionToken = extensions.extensionsJson[extensionHandler.extensionName];
+                        var extensionValue = extensionToken.ToObject(mpeh.primitiveSchemaType);
+
+                        if (extensionValue == null)
+                        {
+                            Debug.LogWarning($"Unable to deserialize {extensionToken} to {mpeh.primitiveSchemaType.FullName}");
+                            continue;
+                        }
+                        
+                        mpeh.HandleMeshPrimitive(extensionValue, meshGo);
+                    }
+                }
+            }
         }
 
         /// <inheritdoc />
@@ -308,7 +354,8 @@ namespace GLTFast
             NativeArray<Vector3>? positions,
             NativeArray<Quaternion>? rotations,
             NativeArray<Vector3>? scales,
-            int primitiveNumeration = 0
+            int primitiveNumeration = 0,
+            MeshPrimitiveExtensions extensions = null
         )
         {
             if ((m_Settings.Mask & ComponentType.Mesh) == 0)
@@ -323,7 +370,7 @@ namespace GLTFast
                 material.enableInstancing = true;
                 materials[index] = material;
             }
-
+            
             for (var i = 0; i < instanceCount; i++)
             {
                 var meshGo = new GameObject($"{meshName}_i{i}");
@@ -338,6 +385,13 @@ namespace GLTFast
                 mf.mesh = mesh;
                 Renderer renderer = meshGo.AddComponent<MeshRenderer>();
                 renderer.sharedMaterials = materials;
+                
+                foreach (var extensionHandler in m_Gltf.GetExtensions())
+                {
+                    if (extensionHandler is IMeshPrimitiveExtensionHandler mpeh) {
+                        mpeh.HandleMeshPrimitive(extensions, meshGo);
+                    }
+                }
             }
         }
 
