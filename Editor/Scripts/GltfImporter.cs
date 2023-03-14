@@ -107,7 +107,9 @@ namespace GLTFast.Editor
                 GenerateMipMaps = true,
                 AnimationMethod = AnimationMethod.Mecanim,
             };
-            instantiationSettings ??= new InstantiationSettings();
+            instantiationSettings ??= new InstantiationSettings() {
+                SceneObjectCreation = SceneObjectCreation.Always
+            };
 
             var success = AsyncHelpers.RunSync(() => m_Gltf.Load(ctx.assetPath, importSettings));
 
