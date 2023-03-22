@@ -51,7 +51,10 @@ namespace GLTFast.Export
         static readonly int k_MetallicGlossMap = Shader.PropertyToID("_MetallicGlossMap");
         static readonly int k_Glossiness = Shader.PropertyToID("_Glossiness");
         static readonly int k_GlossMapScale = Shader.PropertyToID("_GlossMapScale");
-
+        
+        // CUSTOM CODE -----------------------------------------
+        static readonly int k_BaseColorTexture = Shader.PropertyToID("baseColorTexture");
+        
         /// <summary>
         /// Converts a Unity material to a glTF material.
         /// </summary>
@@ -199,6 +202,33 @@ namespace GLTFast.Export
                     if (material.pbrMetallicRoughness.baseColorTexture != null)
                     {
                         ExportTextureTransform(material.pbrMetallicRoughness.baseColorTexture, uMaterial, mainTexProperty, gltf);
+                    }
+                }
+                if (uMaterial.HasProperty(k_TintColor))
+                {
+                    //particles use _TintColor instead of _Color
+                    material.pbrMetallicRoughness.BaseColor = uMaterial.GetColor(k_TintColor);
+                }
+            }
+            // CUSTOM CODE TO MAKE THE TEXTURE EXPORT WORK ----------------------------------------------------
+            else if (uMaterial.HasProperty(k_BaseColorTexture))
+            {
+                var baseColorTexProperty = k_BaseColorTexture;
+                var mainTex = uMaterial.GetTexture(baseColorTexProperty);
+                material.pbrMetallicRoughness = new PbrMetallicRoughness
+                {
+                    metallicFactor = 0,
+                    roughnessFactor = 1.0f,
+                    BaseColor = uMaterial.HasProperty(BaseColorProperty)
+                        ? uMaterial.GetColor(BaseColorProperty)
+                        : Color.white
+                };
+                if (mainTex != null)
+                {
+                    material.pbrMetallicRoughness.baseColorTexture = ExportTextureInfo(mainTex, gltf);
+                    if (material.pbrMetallicRoughness.baseColorTexture != null)
+                    {
+                        ExportTextureTransform(material.pbrMetallicRoughness.baseColorTexture, uMaterial, baseColorTexProperty, gltf);
                     }
                 }
                 if (uMaterial.HasProperty(k_TintColor))

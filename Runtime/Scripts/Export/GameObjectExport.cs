@@ -16,9 +16,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using GLTFast.Schema;
 using UnityEngine;
+using Camera = UnityEngine.Camera;
+using Material = UnityEngine.Material;
+using Mesh = UnityEngine.Mesh;
 
 namespace GLTFast.Export
 {
@@ -30,6 +35,8 @@ namespace GLTFast.Export
     /// </summary>
     public class GameObjectExport
     {
+        // CUSTOM CODE --------------------------------------------
+        public GltfWriter Writer => m_Writer;
 
         GltfWriter m_Writer;
         IMaterialExport m_MaterialExport;

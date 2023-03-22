@@ -324,6 +324,19 @@ namespace GLTFast.Schema
                 KHR_draco_mesh_compression.GltfSerialize(writer);
             }
 #endif
+            
+            // CUSTOM CODE ----------------------------------------------------------
+            if (extensionsJson.Count > 0)
+            {
+                writer.AddProperty("extensions");
+                writer.OpenBrackets();
+                foreach (var extensionKeyPair in extensionsJson)
+                {
+                    writer.AddProperty(extensionKeyPair.Key, extensionKeyPair.Value);
+                }
+
+                writer.Close();
+            }
         }
     }
 

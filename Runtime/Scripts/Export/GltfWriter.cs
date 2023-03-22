@@ -68,6 +68,15 @@ namespace GLTFast.Export
     /// </summary>
     public class GltfWriter : IGltfWritable
     {
+        
+        
+        
+        
+        // CUSTOM CODE -------------------------
+        public List<UnityEngine.Material> UnityMaterials => m_UnityMaterials;
+        public Action<Mesh, MeshPrimitive> BeforePrimitiveSerializationCallback;
+        
+        
 
         enum State
         {
@@ -922,6 +931,9 @@ namespace GLTFast.Export
             var attributes = new Attributes();
             var vertexCount = uMesh.vertexCount;
             var attrDataDict = new Dictionary<VertexAttribute, AttributeData>();
+            
+            // CUSTOM CODE ---------------------------
+            mesh.BeforePrimitiveSerializationCallback += (meshTarget, meshPrimitive) => BeforePrimitiveSerializationCallback?.Invoke(meshTarget, meshPrimitive);
 
             foreach (var attribute in vertexAttributes) {
                 if (attribute.attribute == VertexAttribute.BlendWeight 
@@ -1939,6 +1951,10 @@ namespace GLTFast.Export
             {
                 name = uMesh.name
             };
+            
+            // CUSTOM CODE ----------------------
+            //mesh.BeforePrimitiveSerializationCallback += (meshTarget, meshPrimitive) => BeforePrimitiveSerializationCallback?.Invoke(meshTarget, meshPrimitive);
+            
             m_Meshes = m_Meshes ?? new List<Mesh>();
             m_UnityMeshes = m_UnityMeshes ?? new List<UnityEngine.Mesh>();
             m_Meshes.Add(mesh);

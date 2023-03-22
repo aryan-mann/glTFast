@@ -25,6 +25,8 @@ namespace GLTFast.Schema
     [Serializable]
     public class Mesh : NamedObject, ICloneable
     {
+        // CUSTOM CODE ----------------------------
+        public Action<Mesh, MeshPrimitive> BeforePrimitiveSerializationCallback;
 
         /// <summary>
         /// An array of primitives, each defining geometry to be rendered with
@@ -69,6 +71,9 @@ namespace GLTFast.Schema
                 writer.AddArray("primitives");
                 foreach (var primitive in primitives)
                 {
+                    // CUSTOM CODE ----------------------------
+                    BeforePrimitiveSerializationCallback?.Invoke(this, primitive);
+                    
                     primitive.GltfSerialize(writer);
                 }
                 writer.CloseArray();

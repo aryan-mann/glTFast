@@ -57,6 +57,11 @@ namespace GLTFast
         /// <see href="https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_texture_transform/README.md">KHR_texture_transform</see> glTF extension
         /// </summary>
         TextureTransform,
+        
+        /// <summary>
+        /// CUSTOM CODE EXT -------------------------------------
+        /// </summary>
+        KhrMaterialsVariants,
     }
 
     /// <summary>
@@ -132,6 +137,11 @@ namespace GLTFast
                     return TextureBasisUniversal;
                 case Extension.TextureTransform:
                     return TextureTransform;
+                
+                // CUSTOM CODE EXT -------------------------------------
+                case Extension.KhrMaterialsVariants:
+                    return "KHR_materials_variants";
+                
                 default:
                     return null;
             }
