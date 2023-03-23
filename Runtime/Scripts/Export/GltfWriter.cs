@@ -75,6 +75,7 @@ namespace GLTFast.Export
         // CUSTOM CODE -------------------------
         public List<UnityEngine.Material> UnityMaterials => m_UnityMaterials;
         public Action<Mesh, MeshPrimitive> BeforePrimitiveSerializationCallback;
+        public Action<Schema.RootExtension> AddExtensionCallback;
         
         
 
@@ -794,6 +795,10 @@ namespace GLTFast.Export
                 m_Gltf.extensions.KHR_lights_punctual = m_Gltf.extensions.KHR_lights_punctual ?? new LightsPunctual();
                 m_Gltf.extensions.KHR_lights_punctual.lights = m_Lights.ToArray();
             }
+            
+            // CUSTOM CODE -----------------------------------------------------
+            m_Gltf.extensions = m_Gltf.extensions ?? new Schema.RootExtension();
+            m_Gltf.extensions.AddExtensionCallback += extensionRoot => AddExtensionCallback(extensionRoot);
 
             m_Gltf.asset = new Asset
             {

@@ -13,7 +13,9 @@
 // limitations under the License.
 //
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -26,6 +28,10 @@ namespace GLTFast.Schema
     [System.Serializable]
     public class RootExtension
     {
+        // CUSTOM CODE ----------------------------
+        public Action<RootExtension> AddExtensionCallback;
+        
+        
         /// <inheritdoc cref="LightsPunctual"/>
         // ReSharper disable once InconsistentNaming
         public LightsPunctual KHR_lights_punctual;
@@ -61,6 +67,20 @@ namespace GLTFast.Schema
                 writer.AddProperty("KHR_lights_punctual");
                 KHR_lights_punctual.GltfSerialize(writer);
             }
+            
+            // CUSTOM CODE ----------------------------
+            AddExtensionCallback?.Invoke(this);
+
+            // CUSTOM CODE ----------------------------------------------------------
+            if (extensionsJson.Count > 0)
+            {
+                // Ignore the light extension that is serialized above
+                foreach (var extensionKeyPair in extensionsJson.Where(ext => ext.Key != "KHR_lights_punctual"))
+                {
+                    writer.AddProperty(extensionKeyPair.Key, extensionKeyPair.Value);
+                }
+            }
+            
             writer.Close();
         }
     }
