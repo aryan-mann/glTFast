@@ -15,44 +15,17 @@ using RootExtension = GLTFast.Schema.RootExtension;
 
 namespace Editor.Scripts
 {
-    public struct ExportableModelData
-    {
-        public List<ExportableVariantSet> materialVariantSets;
-    }
-
-    public struct ExportableVariantSet
-    {
-        public Guid id;
-        public List<ExportableMaterialSlotTarget> exportableMaterialSlotTarget;
-        public List<ExportableMaterialVariant> exportableMaterialVariant;
-    }
-
-    public struct ExportableMaterialSlotTarget
-    {
-        public string rendererPath;
-        public int rendererSlotIndex;
-    }
-
-    public struct ExportableMaterialVariant
-    {
-        public Guid variantId;
-        public string code;
-        public Material material;
-    }
-    
     public static class CustomGltfExportUtils
     {
         const string k_GltfExtension = "gltf";
         const string k_GltfBinaryExtension = "glb";
         
-        public static void ExportGltfFromDTVariants(GameObject gameObject, ExportableModelData exportableModelData)
+        public static void ExportGltfFromDTVariants(GameObject gameObject, List<string> khrVariants, Dictionary<string, Dictionary<Material, List<int>>> mappingData, Material[] khrMaterials)
         {
-            
             // Requirement: the shoe material used in the prefab model (generated on import) needs to use the imported materials (from the Materials folder) instead of the Gltf ones (under the asset directly). 
             //  Otherwise, we will get an additional material in the gltf list.
             
-
-            Export(false, gameObject.name, new[] { gameObject }, exportableModelData);
+            Export(false, gameObject.name, new[] { gameObject }, khrVariants, mappingData, khrMaterials);
         }
 
         static string SaveFolderPath
@@ -78,7 +51,7 @@ namespace Editor.Scripts
             return settings;
         }
         
-        static void Export(bool binary, string name, GameObject[] gameObjects, ExportableModelData exportableModelData)
+        static void Export(bool binary, string name, GameObject[] gameObjects, List<string> khrVariants, Dictionary<string, Dictionary<Material, List<int>>> mappingData, Material[] khrMaterials)
         {
             var extension = binary ? k_GltfBinaryExtension : k_GltfExtension;
             var path = EditorUtility.SaveFilePanel(
@@ -96,9 +69,9 @@ namespace Editor.Scripts
                 
                 // CUSTOM CODE
                 export.Writer.RegisterExtensionUsage(Extension.KhrMaterialsVariants, false);
-                RegisterVariantsMaterial(export.Writer, exportableModelData);
-                export.Writer.BeforePrimitiveSerializationCallback += (mesh, meshPrimitive) => BeforePrimitiveSerializationCallback(mesh, meshPrimitive, exportableModelData);
-                export.Writer.AddExtensionCallback += (extensionRoot) => RegisterVariantsData(extensionRoot, exportableModelData);
+                RegisterVariantsMaterial(export.Writer, khrMaterials);
+                export.Writer.BeforePrimitiveSerializationCallback += (mesh, meshPrimitive) => BeforePrimitiveSerializationCallback(mesh, meshPrimitive, mappingData, khrMaterials);
+                export.Writer.AddExtensionCallback += (extensionRoot) => RegisterVariantsData(extensionRoot, khrVariants);
 
                 export.AddScene(gameObjects, name);
                 AsyncHelpers.RunSync(() => export.SaveToFileAndDispose(path));
@@ -109,27 +82,20 @@ namespace Editor.Scripts
 #endif
             }
         }
-
-        // keep a reference of the material id when added to the Gltfwriter material list (used for mesh primitive indexing)
-        static Dictionary<string, int> s_MaterialNameToDataIndex;
-
-        static void RegisterVariantsData(RootExtension rootExtension, ExportableModelData exportableModelData)
+        
+        static void RegisterVariantsData(RootExtension rootExtension, List<string> khrVariants)
         {
             var jsonExtData = new Newtonsoft.Json.Linq.JObject();
             var variantsArray = new Newtonsoft.Json.Linq.JArray();
-            
-            // Note: VariantSets are not separate in this case (KHR model)
-            foreach (var variantSet in exportableModelData.materialVariantSets)
+
+            foreach (var variantCode in khrVariants)
             {
-                foreach (var matVariant in variantSet.exportableMaterialVariant)
+                var variantArrayEntry = new Newtonsoft.Json.Linq.JObject
                 {
-                    var variantArrayEntry = new Newtonsoft.Json.Linq.JObject
-                    {
-                        { "name", matVariant.code }
-                    };
+                    { "name", variantCode }
+                };
                     
-                    variantsArray.Add(variantArrayEntry);
-                }
+                variantsArray.Add(variantArrayEntry);
             }
             jsonExtData.Add("variants", variantsArray);
             
@@ -149,51 +115,34 @@ namespace Editor.Scripts
             //     }
         }
 
-        static void RegisterVariantsMaterial(IGltfWritable writer, ExportableModelData exportableModelData)
+        static void RegisterVariantsMaterial(IGltfWritable writer, IEnumerable<Material> khrMaterials)
         {
-            s_MaterialNameToDataIndex = new Dictionary<string, int>();
-            
-            var variantMaterials = exportableModelData.materialVariantSets
-                .SelectMany(x => x.exportableMaterialVariant)
-                .Select(x => x.material)
-                .ToList();
-            
             // Add all materials used in variants and that was not found in the model gameObject
-            foreach (var mat in variantMaterials)
+            foreach (var mat in khrMaterials)
             {
-                if(!writer.AddMaterial(mat, out var materialId, new StandardMaterialExport()))
+                if(!writer.AddMaterial(mat, out _, new StandardMaterialExport()))
                     Debug.LogError("AddMaterial Failed!");
-                else
-                    s_MaterialNameToDataIndex.Add(mat.name, materialId);
             }
         }
 
         // Called when a mesh primitive is serialized
-        static void BeforePrimitiveSerializationCallback(GLTFast.Schema.Mesh mesh, MeshPrimitive meshPrimitive, ExportableModelData exportableModelData)
+        static void BeforePrimitiveSerializationCallback(GLTFast.Schema.Mesh mesh, MeshPrimitive meshPrimitive, IReadOnlyDictionary<string, Dictionary<Material, List<int>>> mappingData, IEnumerable<Material> khrMaterials)
         {
-            // TODO: check if the mesh is the one targeted by the renderer path in 'ExportableMaterialSlotTarget'
-            // Compare node path to "rendererPath" and add data to it?
-            // var goRendererPathParts = partId.rendererPath.Split("/");
-
-            //if(mesh.name != "shoe")
-            //    return;
+            if(!mappingData.ContainsKey(mesh.name))
+                return;
             
             var jsonExtData = new Newtonsoft.Json.Linq.JObject();
             var mappingArray = new Newtonsoft.Json.Linq.JArray();
-            
-            // Note: VariantSets are not separate in this case (KHR model)
-            foreach (var variantSet in exportableModelData.materialVariantSets)
+            var materialList = khrMaterials.ToList();            
+            foreach (var materialToVariantIndexKeyPair in mappingData[mesh.name])
             {
-                foreach (var matVariant in variantSet.exportableMaterialVariant)
+                var variantArrayEntry = new Newtonsoft.Json.Linq.JObject
                 {
-                    var variantArrayEntry = new Newtonsoft.Json.Linq.JObject
-                    {
-                        { "material", s_MaterialNameToDataIndex[matVariant.material.name] },
-                        { "variants", new Newtonsoft.Json.Linq.JArray { variantSet.exportableMaterialVariant.IndexOf(matVariant) } }  // Use the same order as the variant list in 'RegisterVariantsData()'
-                    };
+                    { "material", materialList.IndexOf(materialToVariantIndexKeyPair.Key) },
+                    { "variants", new Newtonsoft.Json.Linq.JArray(materialToVariantIndexKeyPair.Value.ToArray()) }
+                };
                     
-                    mappingArray.Add(variantArrayEntry);
-                }
+                mappingArray.Add(variantArrayEntry);
             }
             jsonExtData.Add("mappings", mappingArray);
             
