@@ -54,6 +54,8 @@ namespace GLTFast.Export
         
         // CUSTOM CODE -----------------------------------------
         static readonly int k_BaseColorTexture = Shader.PropertyToID("baseColorTexture");
+        static readonly int k_NormalTexture = Shader.PropertyToID("normalTexture");
+        static readonly int k_MetallicRoughnessTexture = Shader.PropertyToID("metallicRoughnessTexture");
         
         /// <summary>
         /// Converts a Unity material to a glTF material.
@@ -136,6 +138,28 @@ namespace GLTFast.Export
                         if (material.normalTexture != null)
                         {
                             ExportTextureTransform(material.normalTexture, uMaterial, k_BumpMap, gltf);
+                        }
+                    }
+                    else
+                    {
+                        logger?.Error(LogCode.TextureInvalidType, "normal", uMaterial.name);
+                        success = false;
+                    }
+                }
+            }
+            // CUSTOM CODE ------------------------------------
+            if (uMaterial.HasProperty(k_NormalTexture))
+            {
+                var normalTex = uMaterial.GetTexture(k_NormalTexture);
+
+                if (normalTex != null)
+                {
+                    if (normalTex is Texture2D)
+                    {
+                        material.normalTexture = ExportNormalTextureInfo(normalTex, uMaterial, gltf, k_BumpScale);
+                        if (material.normalTexture != null)
+                        {
+                            ExportTextureTransform(material.normalTexture, uMaterial, k_NormalTexture, gltf);
                         }
                     }
                     else
