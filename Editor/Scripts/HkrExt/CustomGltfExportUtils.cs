@@ -20,12 +20,16 @@ namespace Editor.Scripts
         const string k_GltfExtension = "gltf";
         const string k_GltfBinaryExtension = "glb";
         
-        public static void ExportGltfFromDTVariants(GameObject gameObject, List<string> khrVariants, Dictionary<string, Dictionary<Material, List<int>>> mappingData, Material[] khrMaterials)
+        public static void ExportGltfFromDTVariants(GameObject gameObject, 
+            List<string> khrVariants, Dictionary<string, Dictionary<Material, List<int>>> mappingData, Material[] khrMaterials, // HRK Material Variants
+            List<string> khrVisibilityVariants, Dictionary<string, Dictionary<string, List<int>>> visibilityMappingData)        // CUSTOM HRK Visibility Variants
         {
             // Requirement: the shoe material used in the prefab model (generated on import) needs to use the imported materials (from the Materials folder) instead of the Gltf ones (under the asset directly). 
             //  Otherwise, we will get an additional material in the gltf list.
             
-            Export(false, gameObject.name, new[] { gameObject }, khrVariants, mappingData, khrMaterials);
+            // TODO: we might have to add meshes that are not in the prefab otherwise they won't be exported
+            
+            Export(false, gameObject.name, new[] { gameObject }, khrVariants, mappingData, khrMaterials, khrVisibilityVariants, visibilityMappingData);
         }
 
         static string SaveFolderPath
@@ -51,7 +55,9 @@ namespace Editor.Scripts
             return settings;
         }
         
-        static void Export(bool binary, string name, GameObject[] gameObjects, List<string> khrVariants, Dictionary<string, Dictionary<Material, List<int>>> mappingData, Material[] khrMaterials)
+        static void Export(bool binary, string name, GameObject[] gameObjects, 
+            List<string> khrVariants, IReadOnlyDictionary<string, Dictionary<Material, List<int>>> mappingData, Material[] khrMaterials, // HRK Material Variants
+            List<string> khrVisibilityVariants, IReadOnlyDictionary<string, Dictionary<string, List<int>>> visibilityMappingData)        // CUSTOM HRK Visibility Variants
         {
             var extension = binary ? k_GltfBinaryExtension : k_GltfExtension;
             var path = EditorUtility.SaveFilePanel(
@@ -69,9 +75,21 @@ namespace Editor.Scripts
                 
                 // CUSTOM CODE
                 export.Writer.RegisterExtensionUsage(Extension.KhrMaterialsVariants, false);
+                export.Writer.RegisterExtensionUsage(Extension.KhrVisibilityVariants, false);
+                
                 RegisterVariantsMaterial(export.Writer, khrMaterials);
-                export.Writer.BeforePrimitiveSerializationCallback += (mesh, meshPrimitive) => BeforePrimitiveSerializationCallback(mesh, meshPrimitive, mappingData, khrMaterials);
-                export.Writer.AddExtensionCallback += (extensionRoot) => RegisterVariantsData(extensionRoot, khrVariants);
+
+                export.Writer.BeforePrimitiveSerializationCallback += (mesh, meshPrimitive) =>
+                {
+                    BeforePrimitiveSerializationCallbackMaterialVariants(mesh, meshPrimitive, mappingData, khrMaterials);
+                    BeforePrimitiveSerializationCallbackVisibilityVariants(mesh, meshPrimitive, visibilityMappingData);
+                };
+     
+                export.Writer.AddExtensionCallback += (extensionRoot) =>
+                {
+                    RegisterVariantsData(extensionRoot, khrVariants);
+                    RegisterVisibilityVariantsData(extensionRoot, khrVisibilityVariants);
+                };
 
                 export.AddScene(gameObjects, name);
                 AsyncHelpers.RunSync(() => export.SaveToFileAndDispose(path));
@@ -126,7 +144,7 @@ namespace Editor.Scripts
         }
 
         // Called when a mesh primitive is serialized
-        static void BeforePrimitiveSerializationCallback(GLTFast.Schema.Mesh mesh, MeshPrimitive meshPrimitive, IReadOnlyDictionary<string, Dictionary<Material, List<int>>> mappingData, IEnumerable<Material> khrMaterials)
+        static void BeforePrimitiveSerializationCallbackMaterialVariants(GLTFast.Schema.Mesh mesh, MeshPrimitive meshPrimitive, IReadOnlyDictionary<string, Dictionary<Material, List<int>>> mappingData, IEnumerable<Material> khrMaterials)
         {
             if(!mappingData.ContainsKey(mesh.name))
                 return;
@@ -172,6 +190,87 @@ namespace Editor.Scripts
             //             "material": 2,
             //             "variants": [
             //                  2
+            //             ]
+            //         }
+            //         ]
+            //     }
+            // },
+        }
+        
+        static void RegisterVisibilityVariantsData(RootExtension rootExtension, List<string> khrVisibilityVariants)
+        {
+            var jsonExtData = new Newtonsoft.Json.Linq.JObject();
+            var variantsArray = new Newtonsoft.Json.Linq.JArray();
+
+            foreach (var variantCode in khrVisibilityVariants)
+            {
+                var variantArrayEntry = new Newtonsoft.Json.Linq.JObject
+                {
+                    { "name", variantCode }
+                };
+                    
+                variantsArray.Add(variantArrayEntry);
+            }
+            jsonExtData.Add("variants", variantsArray);
+            
+            // Add the mesh primitive "KHR_materials_variants" data
+            rootExtension.extensionsJson ??= new Dictionary<string, JToken>();
+            rootExtension.extensionsJson.Add(Extension.KhrVisibilityVariants.GetName(), jsonExtData);
+            
+            // Structure example:
+            //
+            // "extensions": {
+            //     "KHR_materials_variants": {
+            //         "variants": [
+            //         {"name": "midnight"},
+            //         {"name": "beach" },
+            //         {"name": "street" }
+            //         ]
+            //     }
+        }
+        
+          // Called when a mesh primitive is serialized
+        static void BeforePrimitiveSerializationCallbackVisibilityVariants(GLTFast.Schema.Mesh mesh, MeshPrimitive meshPrimitive, IReadOnlyDictionary<string, Dictionary<string, List<int>>> mappingData)
+        {
+            if(!mappingData.ContainsKey(mesh.name))
+                return;
+            
+            var jsonExtData = new Newtonsoft.Json.Linq.JObject();
+            var mappingArray = new Newtonsoft.Json.Linq.JArray();
+            var visibilityValuesList = new List<string> { "false", "true" };
+            foreach (var materialToVariantIndexKeyPair in mappingData[mesh.name])
+            {
+                var variantArrayEntry = new Newtonsoft.Json.Linq.JObject
+                {
+                    // false = 0   true = 1
+                    { "visibility", visibilityValuesList.IndexOf(materialToVariantIndexKeyPair.Key) }, 
+                    { "variants", new Newtonsoft.Json.Linq.JArray(materialToVariantIndexKeyPair.Value.ToArray()) }
+                };
+                    
+                mappingArray.Add(variantArrayEntry);
+            }
+            jsonExtData.Add("mappings", mappingArray);
+            
+            // Add the mesh primitive "KHR_materials_variants" data
+            meshPrimitive.extensions ??= new MeshPrimitiveExtensions();
+            meshPrimitive.extensions.extensionsJson ??= new Dictionary<string, JToken>();
+            meshPrimitive.extensions.extensionsJson.Add(Extension.KhrVisibilityVariants.GetName(), jsonExtData);
+            
+            // Structure example:
+            //
+            // "extensions": {
+            //     "KHR_visibility_variants": {
+            //         "mappings": [
+            //         {
+            //             "visibility": 0,
+            //             "variants": [
+            //                  0, 3, ...
+            //             ]
+            //         },
+            //         {
+            //             "visibility": 1,
+            //             "variants": [
+            //                  1, 2, ...
             //             ]
             //         }
             //         ]

@@ -62,6 +62,7 @@ namespace GLTFast
         /// CUSTOM CODE EXT -------------------------------------
         /// </summary>
         KhrMaterialsVariants,
+        KhrVisibilityVariants,
     }
 
     /// <summary>
@@ -141,7 +142,9 @@ namespace GLTFast
                 // CUSTOM CODE EXT -------------------------------------
                 case Extension.KhrMaterialsVariants:
                     return "KHR_materials_variants";
-                
+                case Extension.KhrVisibilityVariants:
+                    return "KHR_visibility_variants";
+
                 default:
                     return null;
             }
